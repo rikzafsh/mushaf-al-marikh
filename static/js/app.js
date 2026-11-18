@@ -39,7 +39,12 @@
     lines.forEach(l => (l.style.fontSize = ""));
     let size = parseFloat(getComputedStyle(lines[0]).fontSize);
     const min = size * 0.3;
-    const overflows = () => lines.some(l => l.scrollWidth > l.clientWidth + 1);
+    // lebar isi = jumlah lebar potongan teks (keterangan margin absolut tidak ikut dihitung)
+    const overflows = () => lines.some(l => {
+      let w = 0;
+      l.querySelectorAll(".run").forEach(r => (w += r.getBoundingClientRect().width));
+      return w > l.getBoundingClientRect().width + 1;
+    });
     while (overflows() && size > min) {
       size *= 0.97;
       lines.forEach(l => (l.style.fontSize = size + "px"));

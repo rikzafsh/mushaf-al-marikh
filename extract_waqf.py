@@ -43,6 +43,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterator
 
+from mushaf_data import clean_words  # buang ۞ bawaan agar urutan kata sama dengan tampilan mushaf
+
 PROJECT_DIR = Path(__file__).parent
 
 # --------------------------------------------------------------------------
@@ -122,6 +124,7 @@ def extract_ayah(ayah: dict, source: str):
     if not words:
         words = ayah["text"].split()
         words_source = "arabic_split"
+    words = clean_words(words)
 
     total_words = sum(1 for t in words if not is_standalone_sign(t))
     records, others = [], []

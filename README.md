@@ -55,6 +55,23 @@ Mengikuti mushaf: `2 1`, `4 3`, `6 5`, ... (genap di kiri, ganjil di kanan).
 - Teks satu halaman otomatis mengecil bersama bila ada baris yang terlalu padat
 - API: `GET /api/page/<n>` (JSON halaman)
 
+## Tanda thumn (۞) dan keterangan hizb
+
+```bash
+python convert_thumn.py thumn_fix.csv     # CSV -> data/thumn.json (480 thumn = 60 hizb x 8)
+python validate_data.py                   # ikut mengecek posisi thumn
+```
+
+- `data/thumn.json` dipakai otomatis oleh aplikasi. Tiap thumn diberi tanda ۞ tepat di
+  awalnya: `Word_Count` kosong = awal ayat, `Word_Count` = N = di tengah ayat, setelah N
+  kata pertama (kata dihitung dari `arabic_words`, sama dengan acuan `word_count` di mushaf.json).
+- ۞ bawaan di data ayat dibuang lebih dulu (token yang hanya berisi ۞ ikut dibuang agar
+  tidak dihitung sebagai kata). Fungsinya: `clean_words` di `mushaf_data.py`.
+- Baris yang memuat ۞ diberi keterangan di pinggir luar halaman: kanan untuk halaman kanan
+  (ganjil), kiri untuk halaman kiri (genap). Isinya pecahan hizb yang sudah dilalui:
+  `awal hizb N`, `1/8`, `1/4`, `3/8`, `1/2`, `5/8`, `3/4`, `7/8` + `hizb N`.
+  Penamaan ada di tabel `FRACTIONS` pada `convert_thumn.py`.
+
 ## Data tanda waqaf
 
 ```bash

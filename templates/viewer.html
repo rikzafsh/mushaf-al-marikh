@@ -27,13 +27,16 @@
     <div class="page-body">
       {% for line in p.lines %}
       <div class="line{{ ' sparse' if line.sparse }}" dir="rtl" style="grid-row: {{ line.row }}">
+        {% for n in line.notes %}
+          <span class="margin-note" title="{{ n.label }}"><b>{{ n.top }}</b><small>{{ n.bottom }}</small></span>
+        {% endfor %}
         {% for h in line.headers %}
           <span class="surah-pill"><span class="ar">{{ h.arabic|trim }}</span><small>{{ h.id }}. {{ h.transliteration }}</small></span>
         {% endfor %}
         {%- for run in line.runs -%}
         <span class="run c-{{ run.color }}" style="flex-grow: {{ run.tokens|length }}" title="QS {{ run.label }}">
           {%- for t in run.tokens -%}
-            <span class="w">{{ t.text }}{% if t.end %}<span class="an">{{ t.end|ar_digits }}</span>{% endif %}</span>
+            <span class="w">{% if t.thumn %}<span class="thumn" title="{{ t.thumn.label }}">۞</span>{% endif %}{{ t.text }}{% if t.end %}<span class="an">{{ t.end|ar_digits }}</span>{% endif %}</span>
           {%- endfor -%}
         </span>
         {%- endfor -%}

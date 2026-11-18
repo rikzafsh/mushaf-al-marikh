@@ -32,6 +32,20 @@ SECTION_LABELS = ["Merah", "Kuning", "Hijau", "Biru muda", "Ungu"]
 # --------------------------------------------------------------------------
 # Utilitas teks
 # --------------------------------------------------------------------------
+THUMN_SIGN = "\u06DE"  # ۞ (tanda awal rub'/thumn)
+
+
+def clean_words(words: list[str]) -> list[str]:
+    """Buang ۞ bawaan dari data (tanda ini dipasang ulang dari thumn.json).
+    Token yang hanya berisi ۞ dibuang sehingga tidak ikut dihitung sebagai kata."""
+    out = []
+    for w in words:
+        w = " ".join(w.replace(THUMN_SIGN, "").split())
+        if w:
+            out.append(w)
+    return out
+
+
 def base_len(text: str) -> int:
     """Jumlah huruf dasar (tanpa harakat/tanda baca kecil) -> perkiraan lebar kata."""
     return sum(1 for c in text if not unicodedata.category(c).startswith("M"))
@@ -85,6 +99,11 @@ class MushafData:
         self.issues: list[str] = []
         self._layout = self._build_layout(raw["pages"])
         self.total_pages = len(self._layout)
+        self.thumn = self._load_thumn()
+        # {(surah, ayat): {indeks_kata_awal(0-based): record}}
+        self.thumn_at: dict[tuple[int, int], dict[int, dict]] = {}
+        for t in self.thumn:
+            self.thumn_at.setdefault((t["surah"], t["ayah"]), {})[t["word_count"] or 0] = t
         self.page = lru_cache(maxsize=700)(self._page)
 
     # ---- ayat ----------------------------------------------------------
@@ -131,6 +150,25 @@ class MushafData:
             self.issues.append(f"akhir mushaf di {cursor}, seharusnya selesai di 114:{last['num_ayah']}")
         return layout
 
+    # ---- thumn -----------------------------------------------------------
+    def _load_thumn(self) -> list[dict]:
+        path = self.data_dir / "thumn.json"
+        if not path.exists():
+            return []
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)["records"]
+
+    def page_of(self, surah: int, ayah: int, word_index: int = 0):
+        """Nomor halaman yang memuat posisi (surah, ayat, indeks kata 0-based)."""
+        pos = (surah, ayah, word_index)
+        for n, secs in self._layout.items():
+            for sp in secs:
+                en = sp["end"]
+                end_pos = (en[0], en[1], en[2] if en[2] is not None else 10 ** 9)
+                if sp["start"] <= pos < end_pos:
+                    return n
+        return None
+
     # ---- halaman -------------------------------------------------------
     @staticmethod
     def _words(rec):
@@ -138,7 +176,7 @@ class MushafData:
         words = rec.get("arabic_words")
         if not words:
             words = (rec.get("arabic") or "").split()
-        return words
+        return clean_words(words)
 
     def _section_tokens(self, start, end, sec_index):
         s0, a0, off = start
@@ -158,12 +196,19 @@ class MushafData:
                 last = wc if ((s, a) == (s1, a1) and wc is not None) else len(words)
                 complete = last >= len(words)
                 added = 0
-                for w in words[first:last]:
+                marks = self.thumn_at.get((s, a), {})
+                pending = None
+                for i in range(first, min(last, len(words))):
+                    w = words[i]
+                    if i in marks:
+                        pending = marks[i]
                     # tanda baca kecil (mis. "ەۙ") digabung ke kata sebelumnya
                     if added and base_len(w) <= 1:
                         tokens[-1]["text"] += " " + w
                     else:
-                        tokens.append({"text": w, "end": None, "sec": sec_index, "header": None})
+                        tokens.append({"text": w, "end": None, "sec": sec_index, "header": None,
+                                       "thumn": pending})
+                        pending = None
                         if added == 0 and is_first_of_surah:
                             tokens[-1]["header"] = self.surahs[s]
                     added += 1
@@ -210,7 +255,8 @@ class MushafData:
 
         lines = []
         if not missing:
-            weights = [base_len(t["text"]) + 1 + (2 if t["end"] else 0) for t in tokens]
+            weights = [base_len(t["text"]) + 1 + (2 if t["end"] else 0) + (2 if t["thumn"] else 0)
+                       for t in tokens]
             sizes = partition_lines(weights, total_lines)
             pos = 0
             for r, sz in enumerate(sizes):
@@ -227,6 +273,7 @@ class MushafData:
                     "runs": runs,
                     "sparse": len(chunk) < 4,
                     "headers": [t["header"] for t in chunk if t["header"]],
+                    "notes": [t["thumn"] for t in chunk if t["thumn"]],
                 })
         return {
             "number": n,
