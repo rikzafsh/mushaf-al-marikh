@@ -1,0 +1,192 @@
+:root {
+  color-scheme: light;
+  --bg: #f4efe6;
+  --ink: #1d1a16;
+  --muted: #7a7266;
+  --paper: #fffdf8;
+  --edge: #d9cfbd;
+  --accent: #2f6b4f;
+
+  --red-bg: #ffdada;    --red-bd: #e53935;
+  --yellow-bg: #fff4bf; --yellow-bd: #f2b705;
+  --green-bg: #d6f3d9;  --green-bd: #3fa34d;
+  --blue-bg: #d4f0fb;   --blue-bd: #29a8e0;
+  --purple-bg: #e7dbf8; --purple-bd: #8a5cd0;
+
+  --ar-font: "Amiri Quran", "Scheherazade New", "Traditional Arabic", "Noto Naskh Arabic", serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: 2rem;
+}
+.ar { font-family: var(--ar-font); }
+
+/* ---------- toolbar ---------- */
+.toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem;
+  padding: .7rem 1rem; background: var(--paper); border-bottom: 1px solid var(--edge);
+  position: sticky; top: 0; z-index: 20;
+}
+.toolbar h1 { font-size: 1.15rem; margin: 0 .5rem 0 0; letter-spacing: .02em; }
+.toolbar h1 span { color: var(--accent); }
+.tool { display: flex; align-items: center; gap: .4rem; margin: 0; }
+.tool label { display: flex; align-items: center; gap: .4rem; font-size: .85rem; color: var(--muted); }
+select, input[type=number], button {
+  font: inherit; font-size: .9rem; padding: .35rem .55rem;
+  border: 1px solid var(--edge); border-radius: .5rem; background: #fff; color: var(--ink);
+}
+input[type=number] { width: 5.2rem; }
+button { cursor: pointer; }
+button:hover, .btn:hover { border-color: var(--accent); }
+
+.seg { gap: 0; border: 1px solid var(--edge); border-radius: .5rem; overflow: hidden; }
+.seg a { padding: .35rem .8rem; font-size: .9rem; color: var(--ink); text-decoration: none; background: #fff; }
+.seg a + a { border-left: 1px solid var(--edge); }
+.seg a.on { background: var(--accent); color: #fff; }
+
+/* ---------- legenda ---------- */
+.legend {
+  list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem 1.1rem;
+  margin: .8rem 0 0; padding: 0; font-size: .8rem; color: var(--muted);
+}
+.dot { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; margin-right: .35rem; vertical-align: -1px; border: 2px solid; }
+.dot.c-red { background: var(--red-bg); border-color: var(--red-bd); }
+.dot.c-yellow { background: var(--yellow-bg); border-color: var(--yellow-bd); }
+.dot.c-green { background: var(--green-bg); border-color: var(--green-bd); }
+.dot.c-blue { background: var(--blue-bg); border-color: var(--blue-bd); }
+.dot.c-purple { background: var(--purple-bg); border-color: var(--purple-bd); }
+
+/* ---------- spread ---------- */
+.spread {
+  display: flex; justify-content: center; align-items: flex-start;
+  direction: ltr;                 /* kiri = halaman genap, kanan = halaman ganjil */
+  gap: 0; padding: 1rem;
+}
+.spread.view-1 .page { width: min(92vw, 560px); }
+.spread.view-2 .page { width: min(46vw, 560px); }
+.spread.view-2 .page-left  { border-right: 0; border-radius: .6rem 0 0 .6rem; box-shadow: inset -14px 0 14px -14px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.08); }
+.spread.view-2 .page-right { border-left: 0;  border-radius: 0 .6rem .6rem 0; box-shadow: inset 14px 0 14px -14px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.08); }
+
+/* ---------- satu halaman ---------- */
+.page {
+  aspect-ratio: 0.68;
+  container-type: inline-size;
+  background: var(--paper);
+  border: 1px solid var(--edge);
+  border-radius: .6rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+/* cqw tidak bisa dipakai pada elemen container itu sendiri -> pakai pembungkus */
+.page-inner {
+  height: 100%; display: flex; flex-direction: column;
+  padding: 2.2cqw 5cqw 2cqw 5cqw;
+}
+.page-blank { background: transparent; border-color: transparent; box-shadow: none; }
+
+.page-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 2.6cqw; color: var(--muted); padding: 0 0 1cqw;
+}
+.page-head .surah-names { font-size: 3.4cqw; direction: rtl; }
+
+
+/* 15 baris */
+.page-body {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(15, minmax(0, 1fr));
+}
+
+/* ---------- baris & bagian (5 warna, mengalir) ---------- */
+.line {
+  position: relative;
+  display: flex; justify-content: space-between; align-items: stretch;
+  white-space: nowrap; min-width: 0;
+  font-family: var(--ar-font);
+  font-size: 3.9cqw;
+  line-height: 1;
+}
+.line.sparse { justify-content: center; }
+
+/* potongan bagian di dalam satu baris; warna menyambung antar kata */
+.run {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .3em; padding-inline: .4em; flex-shrink: 0; flex-basis: auto;
+}
+.line.sparse .run { flex-grow: 0 !important; gap: 1.2em; }
+.w { display: inline-block; }
+
+body:not(.no-colors) .run.c-red    { background: var(--red-bg); }
+body:not(.no-colors) .run.c-yellow { background: var(--yellow-bg); }
+body:not(.no-colors) .run.c-green  { background: var(--green-bg); }
+body:not(.no-colors) .run.c-blue   { background: var(--blue-bg); }
+body:not(.no-colors) .run.c-purple { background: var(--purple-bg); }
+
+/* penanda awal surah: pil kecil di tepi atas baris */
+.surah-pill {
+  position: absolute; right: 1.5cqw; top: 0; transform: translateY(-55%); z-index: 3;
+  display: inline-flex; align-items: baseline; gap: .8cqw; line-height: 1.2;
+  background: #fff; border: 1px solid var(--edge); border-radius: 99px;
+  padding: .2cqw 2cqw; box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.surah-pill .ar { font-size: 3cqw; }
+.surah-pill small { font-size: 1.9cqw; color: var(--muted); font-family: system-ui, sans-serif; }
+
+/* penanda akhir ayat */
+.an {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.35em; height: 1.35em; margin-inline: .35em .1em;
+  border: .07em solid currentColor; border-radius: 50%;
+  font-size: .62em; line-height: 1; padding: 0 .15em; vertical-align: middle; color: #6b5a2e;
+}
+
+/* rentang ayat tiap bagian, di bawah halaman */
+.page-foot { display: flex; justify-content: space-between; align-items: center; gap: 2cqw; }
+.ranges { list-style: none; display: flex; gap: 1cqw; margin: 0; padding: 0; font-size: 1.9cqw; direction: ltr; flex-wrap: wrap; }
+.ranges li { padding: .2cqw 1.2cqw; border-radius: 99px; border: 1px solid transparent; color: var(--ink); }
+.ranges li.c-red { background: var(--red-bg); border-color: var(--red-bd); }
+.ranges li.c-yellow { background: var(--yellow-bg); border-color: var(--yellow-bd); }
+.ranges li.c-green { background: var(--green-bg); border-color: var(--green-bd); }
+.ranges li.c-blue { background: var(--blue-bg); border-color: var(--blue-bd); }
+.ranges li.c-purple { background: var(--purple-bg); border-color: var(--purple-bd); }
+body.no-colors .ranges li { background: none; border-color: var(--edge); }
+.page-foot .num { font-family: var(--ar-font); font-size: 3.6cqw; color: var(--muted); }
+
+/* halaman yang datanya belum ada */
+.missing-body { position: relative; display: grid; grid-template-rows: repeat(var(--n), 1fr); }
+.band { opacity: .55; }
+.band.c-red { background: var(--red-bg); } .band.c-yellow { background: var(--yellow-bg); }
+.band.c-green { background: var(--green-bg); } .band.c-blue { background: var(--blue-bg); }
+.band.c-purple { background: var(--purple-bg); }
+body.no-colors .band { background: none !important; }
+.missing {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; font-size: 2.6cqw; color: var(--muted); line-height: 1.6;
+}
+.missing code { background: rgba(255,255,255,.8); padding: 0 .4em; border-radius: .3em; }
+
+/* ---------- pager ---------- */
+.pager { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: .4rem; }
+.btn {
+  display: inline-block; padding: .5rem 1rem; border: 1px solid var(--edge); border-radius: .6rem;
+  background: #fff; color: var(--ink); text-decoration: none; font-size: .9rem;
+}
+.btn.disabled { opacity: .4; pointer-events: none; }
+.pos { font-size: .85rem; color: var(--muted); min-width: 10rem; text-align: center; }
+
+@media (max-width: 640px) {
+  .spread { padding: .5rem; }
+  .spread.view-2 .page { width: 48vw; }
+  .page-inner { padding-inline: 3cqw; }
+}
+
+@media print {
+  .toolbar, .legend, .pager { display: none; }
+  body { background: #fff; }
+  .page { box-shadow: none; }
+}

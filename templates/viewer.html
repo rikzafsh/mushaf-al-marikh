@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mushaf Al-Marikh — {{ spread_label }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Scheherazade+New:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body data-view="{{ view }}">
+
+{% macro page_card(p, number) %}
+  {% if p %}
+  <article class="page {{ 'page-right' if number % 2 else 'page-left' }}" data-page="{{ p.number }}">
+   <div class="page-inner">
+    <header class="page-head">
+      <span class="juz">{% if p.juz %}Juz {{ p.juz }}{% endif %}</span>
+      <span class="surah-names">{% for s in p.surahs %}<span class="ar">{{ s.arabic|trim }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</span>
+    </header>
+
+    {% if p.missing %}
+    <div class="page-body missing-body" style="--n: {{ p.sections|length }}">
+      {% for sec in p.sections %}<div class="band c-{{ sec.color }}"></div>{% endfor %}
+      <div class="missing">Data surah {{ p.missing|join(', ') }} belum ada<br><code>data/ayat/{{ p.missing[0] }}.json</code></div>
+    </div>
+    {% else %}
+    <div class="page-body">
+      {% for line in p.lines %}
+      <div class="line{{ ' sparse' if line.sparse }}" dir="rtl" style="grid-row: {{ line.row }}">
+        {% for h in line.headers %}
+          <span class="surah-pill"><span class="ar">{{ h.arabic|trim }}</span><small>{{ h.id }}. {{ h.transliteration }}</small></span>
+        {% endfor %}
+        {%- for run in line.runs -%}
+        <span class="run c-{{ run.color }}" style="flex-grow: {{ run.tokens|length }}" title="QS {{ run.label }}">
+          {%- for t in run.tokens -%}
+            <span class="w">{{ t.text }}{% if t.end %}<span class="an">{{ t.end|ar_digits }}</span>{% endif %}</span>
+          {%- endfor -%}
+        </span>
+        {%- endfor -%}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <footer class="page-foot">
+      <ul class="ranges">
+        {% for sec in p.sections %}<li class="c-{{ sec.color }}">{{ sec.label }}</li>{% endfor %}
+      </ul>
+      <span class="num">{{ p.number|ar_digits }}</span>
+    </footer>
+   </div>
+  </article>
+  {% else %}
+  <article class="page page-blank" aria-hidden="true"></article>
+  {% endif %}
+{% endmacro %}
+
+<header class="toolbar">
+  <h1>Mushaf <span>Al-Marikh</span></h1>
+
+  <form class="tool" method="get" action="{{ url_for('viewer') }}" id="surah-form">
+    <input type="hidden" name="view" value="{{ view }}">
+    <label>Surah
+      <select name="surah" id="surah-select">
+        {% for s in surahs %}
+        <option value="{{ s.id }}" {{ 'selected' if s.id == current_surah }}>{{ s.id }}. {{ s.transliteration }}{{ '' if s.id in available else ' •' }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript><button>Buka</button></noscript>
+  </form>
+
+  <form class="tool" method="get" action="{{ url_for('viewer') }}">
+    <input type="hidden" name="view" value="{{ view }}">
+    <label>Halaman
+      <input type="number" name="page" min="1" max="{{ total_pages }}" value="{{ page }}">
+    </label>
+    <button>Buka</button>
+  </form>
+
+  <div class="tool seg" role="group" aria-label="Mode tampilan">
+    <a href="{{ url_for('viewer', page=page, view=1) }}" class="{{ 'on' if view == 1 }}">1 halaman</a>
+    <a href="{{ url_for('viewer', page=page, view=2) }}" class="{{ 'on' if view == 2 }}">2 halaman</a>
+  </div>
+
+  <button type="button" class="tool" id="toggle-colors" aria-pressed="true">Warna bagian: aktif</button>
+</header>
+
+<ul class="legend">
+  {% for key, label in legend %}
+  <li><i class="dot c-{{ key }}"></i>{{ loop.index }} · {{ label }}</li>
+  {% endfor %}
+</ul>
+
+<main class="spread view-{{ view }}">
+  {% for p in pages %}
+    {{ page_card(p, numbers[loop.index0]) }}
+  {% endfor %}
+</main>
+
+<nav class="pager">
+  {# Mushaf dibaca dari kanan ke kiri: "berikutnya" di sisi kiri #}
+  {% if next_page %}
+  <a class="btn" id="nav-next" rel="next" href="{{ url_for('viewer', page=next_page, view=view) }}">← Berikutnya</a>
+  {% else %}<span class="btn disabled">← Berikutnya</span>{% endif %}
+
+  <span class="pos">{{ spread_label }} dari {{ total_pages }}</span>
+
+  {% if prev_page %}
+  <a class="btn" id="nav-prev" rel="prev" href="{{ url_for('viewer', page=prev_page, view=view) }}">Sebelumnya →</a>
+  {% else %}<span class="btn disabled">Sebelumnya →</span>{% endif %}
+</nav>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
