@@ -55,7 +55,33 @@ Mengikuti mushaf: `2 1`, `4 3`, `6 5`, ... (genap di kiri, ganjil di kanan).
 - Teks satu halaman otomatis mengecil bersama bila ada baris yang terlalu padat
 - API: `GET /api/page/<n>` (JSON halaman)
 
+## Data tanda waqaf
+
+```bash
+python extract_waqf.py                    # membaca data/ayat/*.json -> data/waqf/
+python extract_waqf.py --surah 1 2        # hanya surah tertentu
+python extract_waqf.py --ayat-dir D:\\data\\ayat --out-dir hasil
+```
+
+Keluaran: `data/waqf/waqf_<source>.json` (meta, ringkasan, semua record) dan
+`data/waqf/waqf_<source>.csv` (satu baris per tanda; UTF-8 BOM agar terbaca benar di Excel).
+
+Tiap tanda dicatat **setelah kata ke-N** dalam ayatnya:
+
+| field | arti |
+|---|---|
+| `position` | `akhir` (setelah kata terakhir ayat) atau `tengah` |
+| `word_index` / `total_words` | urutan kata asli; token yang hanya berisi tanda (mis. `ەۙ`) tidak dihitung |
+| `token_index` | urutan item di `arabic_words` (sama dengan acuan `word_count` di mushaf.json) |
+| `attached` | tanda menempel di kata (`ya`) atau token terpisah (`tidak`) |
+| `sign`, `code`, `kind`, `name` | tanda (ۖ ۗ ۘ ۙ ۚ ۛ ۜ), kode Unicode, jenis, nama |
+
+Ringkasan JSON juga memuat jumlah per tanda/posisi/surah, ayat dengan `arabic_words` null,
+selisih jumlah tanda antara `arabic` dan `arabic_words`, serta tanda anotasi lain yang bukan
+waqaf (mis. U+08D6 di akhir 1:7). Untuk mushaf lain, tambahkan fungsi pembaca di `LOADERS`
+pada `extract_waqf.py` dan jalankan dengan `--source <nama>`.
+
 ## Catatan
-- Font Arab (Amiri Quran / Scheherazade New) dimuat dari Google Fonts. Untuk offline,
-  taruh file font di `static/` dan tambahkan `@font-face` di `style.css`.
+- Fon Arab: **LPMQ IsepMisbah**. Simpan fail fon di `static/fonts/LPMQ IsepMisbah.ttf`
+  (nama fail persis seperti itu). Tanpa fail tersebut, tampilan memakai fon cadangan sistem.
 - Penanda awal surah berupa label kecil di tepi atas baris, tidak memakai baris sendiri.

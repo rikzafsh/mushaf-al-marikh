@@ -1,3 +1,12 @@
+/* Fon mushaf: simpan fail di static/fonts/LPMQ IsepMisbah.ttf */
+@font-face {
+  font-family: "LPMQ IsepMisbah";
+  src: url("../fonts/LPMQ%20IsepMisbah.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
   --bg: #f4efe6;
@@ -13,7 +22,7 @@
   --blue-bg: #d4f0fb;   --blue-bd: #29a8e0;
   --purple-bg: #e7dbf8; --purple-bd: #8a5cd0;
 
-  --ar-font: "Amiri Quran", "Scheherazade New", "Traditional Arabic", "Noto Naskh Arabic", serif;
+  --ar-font: "LPMQ IsepMisbah", "Traditional Arabic", "Noto Naskh Arabic", serif;
 }
 
 * { box-sizing: border-box; }
