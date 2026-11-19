@@ -64,7 +64,11 @@ python validate_data.py                   # ikut mengecek posisi thumn
 
 - `data/thumn.json` dipakai otomatis oleh aplikasi. Tiap thumn diberi tanda ۞ tepat di
   awalnya: `Word_Count` kosong = awal ayat, `Word_Count` = N = di tengah ayat, setelah N
-  kata pertama (kata dihitung dari `arabic_words`, sama dengan acuan `word_count` di mushaf.json).
+  kata pertama. Yang dihitung adalah **kata asli**: token yang hanya berisi tanda waqaf
+  (mis. `ۗ`, `ەۙ`) tidak dihitung dan ikut kata sebelumnya, sehingga ۞ jatuh tepat setelah
+  tanda waqaf tersebut. Pengaturan: `THUMN_WC_REAL_WORDS` (thumn.json) dan
+  `SECTION_WC_REAL_WORDS` (word_count di mushaf.json) di `mushaf_data.py`; ubah ke `False`
+  untuk menghitung semua token. `python validate_data.py` menampilkan kedua hasilnya.
 - ۞ bawaan di data ayat dibuang lebih dulu (token yang hanya berisi ۞ ikut dibuang agar
   tidak dihitung sebagai kata). Fungsinya: `clean_words` di `mushaf_data.py`.
 - Baris yang memuat ۞ diberi keterangan di pinggir luar halaman: kanan untuk halaman kanan

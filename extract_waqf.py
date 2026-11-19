@@ -43,7 +43,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterator
 
-from mushaf_data import clean_words  # buang ۞ bawaan agar urutan kata sama dengan tampilan mushaf
+from mushaf_data import clean_words, is_sign_token  # samakan pembersihan & definisi kata dengan tampilan mushaf
 
 PROJECT_DIR = Path(__file__).parent
 
@@ -75,14 +75,7 @@ def is_other_mark(ch: str) -> bool:
     return any(a <= o <= b for a, b in OTHER_MARK_RANGES)
 
 
-def is_standalone_sign(token: str) -> bool:
-    """True bila token hanya berisi tanda (tanpa huruf kata sebenarnya)."""
-    for ch in token:
-        if ch in WAQF_SIGNS or ch in PLACEHOLDERS or ch.isspace() or is_other_mark(ch):
-            continue
-        if unicodedata.category(ch).startswith("L"):
-            return False
-    return True
+is_standalone_sign = is_sign_token
 
 
 # --------------------------------------------------------------------------

@@ -34,16 +34,69 @@ SECTION_LABELS = ["Merah", "Kuning", "Hijau", "Biru muda", "Ungu"]
 # --------------------------------------------------------------------------
 THUMN_SIGN = "\u06DE"  # ۞ (tanda awal rub'/thumn)
 
+# Cara menghitung `word_count`:
+#   True  -> hitung KATA ASLI saja; token yang hanya berisi tanda waqaf (mis. "ۗ", "ەۙ")
+#            tidak dihitung dan ikut kata sebelumnya.
+#   False -> hitung semua item `arabic_words` / hasil pecah spasi (token tanda ikut dihitung).
+SECTION_WC_REAL_WORDS = True   # word_count pada mushaf.json
+THUMN_WC_REAL_WORDS = True     # Word_Count pada thumn.json
+
+SIGN_CHARS = set("\u06D6\u06D7\u06D8\u06D9\u06DA\u06DB\u06DC")  # tanda waqaf
+_PLACEHOLDERS = {"\u06D5", "\u0640"}
+_OTHER_RANGES = [(0x06DD, 0x06DE), (0x06E9, 0x06E9), (0x08D3, 0x08FF)]
+
+
+def _is_other_mark(ch: str) -> bool:
+    o = ord(ch)
+    return any(a <= o <= b for a, b in _OTHER_RANGES)
+
+
+def is_sign_token(token: str) -> bool:
+    """True bila token hanya berisi tanda (waqaf / anotasi), tanpa huruf kata sebenarnya."""
+    for ch in token:
+        if ch in SIGN_CHARS or ch in _PLACEHOLDERS or ch.isspace() or _is_other_mark(ch):
+            continue
+        if unicodedata.category(ch).startswith("L"):
+            return False
+    return True
+
 
 def clean_words(words: list[str]) -> list[str]:
-    """Buang ۞ bawaan dari data (tanda ini dipasang ulang dari thumn.json).
-    Token yang hanya berisi ۞ dibuang sehingga tidak ikut dihitung sebagai kata."""
-    out = []
+    """Bersihkan daftar kata:
+    * buang ۞ bawaan (dipasang ulang dari thumn.json); token yang hanya ۞ dibuang,
+    * tanda waqaf yang menempel di AWAL kata (mis. "ۗوَلَقَدْ") dipindah ke akhir kata sebelumnya,
+      supaya tanda itu tidak berada di depan kata berikutnya."""
+    out: list[str] = []
     for w in words:
         w = " ".join(w.replace(THUMN_SIGN, "").split())
-        if w:
-            out.append(w)
+        if not w:
+            continue
+        k = 0
+        while k < len(w) and w[k] in SIGN_CHARS:
+            k += 1
+        if 0 < k < len(w) and out and not is_sign_token(w):
+            out[-1] += w[:k]
+            w = w[k:]
+        out.append(w)
     return out
+
+
+def raw_cut(words: list[str], n: int, real_words: bool) -> int:
+    """Ubah 'n kata' menjadi indeks item (0-based) tempat berhenti.
+    Mode kata asli: berhenti setelah kata asli ke-n beserta token tanda yang langsung menyusulnya.
+    Mengembalikan len(words) bila n melebihi jumlah kata."""
+    if not real_words or n <= 0:
+        return min(n, len(words)) if n > 0 else 0
+    count = 0
+    for idx, w in enumerate(words):
+        if not is_sign_token(w):
+            count += 1
+            if count == n:
+                j = idx + 1
+                while j < len(words) and is_sign_token(words[j]):
+                    j += 1
+                return j
+    return len(words)
 
 
 def base_len(text: str) -> int:
@@ -192,11 +245,13 @@ class MushafData:
             if not words:
                 missing.add(s)
             else:
-                first = off if (s, a) == (s0, a0) else 0
-                last = wc if ((s, a) == (s1, a1) and wc is not None) else len(words)
+                first = raw_cut(words, off, SECTION_WC_REAL_WORDS) if (s, a) == (s0, a0) else 0
+                last = (raw_cut(words, wc, SECTION_WC_REAL_WORDS)
+                        if ((s, a) == (s1, a1) and wc is not None) else len(words))
                 complete = last >= len(words)
                 added = 0
-                marks = self.thumn_at.get((s, a), {})
+                marks = {raw_cut(words, k, THUMN_WC_REAL_WORDS): v
+                         for k, v in self.thumn_at.get((s, a), {}).items()}
                 pending = None
                 for i in range(first, min(last, len(words))):
                     w = words[i]
