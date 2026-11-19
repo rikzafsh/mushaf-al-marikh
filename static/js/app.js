@@ -34,7 +34,7 @@
      Tiap baris satu garis lurus (nowrap). Jika ada baris yang melebihi lebar,
      ukuran huruf seluruh halaman diperkecil bersama-sama supaya seragam. */
   function fitPage(page) {
-    const lines = [...page.querySelectorAll(".line")];
+    const lines = [...page.querySelectorAll(".line.text")];
     if (!lines.length) return;
     lines.forEach(l => (l.style.fontSize = ""));
     let size = parseFloat(getComputedStyle(lines[0]).fontSize);

@@ -26,12 +26,18 @@
     {% else %}
     <div class="page-body">
       {% for line in p.lines %}
-      <div class="line{{ ' sparse' if line.sparse }}" dir="rtl" style="grid-row: {{ line.row }}">
+      {% if line.type == 'header' %}
+      <div class="line surah-header" dir="rtl" style="grid-row: {{ line.row }}">
+        <span class="sh-meta">Surah ke-{{ line.surah.id }}</span>
+        <span class="sh-name"><span class="ar">سورة {{ line.surah.arabic|trim }}</span><small>{{ line.surah.transliteration|trim }} · {{ line.surah.translation|trim }}</small></span>
+        <span class="sh-meta">{{ line.surah.num_ayah }} ayat</span>
+      </div>
+      {% elif line.type == 'basmalah' %}
+      <div class="line basmalah" dir="rtl" style="grid-row: {{ line.row }}"><span class="w">{{ line.text }}</span></div>
+      {% else %}
+      <div class="line text{{ ' sparse' if line.sparse }}" dir="rtl" style="grid-row: {{ line.row }}">
         {% for n in line.notes %}
           <span class="margin-note" title="{{ n.label }}"><b>{{ n.top }}</b><small>{{ n.bottom }}</small></span>
-        {% endfor %}
-        {% for h in line.headers %}
-          <span class="surah-pill"><span class="ar">{{ h.arabic|trim }}</span><small>{{ h.id }}. {{ h.transliteration }}</small></span>
         {% endfor %}
         {%- for run in line.runs -%}
         <span class="run c-{{ run.color }}" style="flex-grow: {{ run.tokens|length }}" title="QS {{ run.label }}">
@@ -41,6 +47,7 @@
         </span>
         {%- endfor -%}
       </div>
+      {% endif %}
       {% endfor %}
     </div>
     {% endif %}

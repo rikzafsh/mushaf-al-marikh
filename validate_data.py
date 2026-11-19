@@ -125,3 +125,17 @@ if used:
     print(f"\nBatas bagian di tengah ayat (mushaf.json): {used} dari {len(ends)} punya data ayat")
     print(f"  jatuh tepat setelah tanda waqaf -> kata asli: {tot[True]}, token: {tot[False]}"
           f"   (SECTION_WC_REAL_WORDS = {md.SECTION_WC_REAL_WORDS})")
+
+# ---- tata letak baris (header surah, basmalah) ---------------------------------
+if len(have) == 114:
+    problems, headers, basmalahs = [], 0, 0
+    for n in range(1, m.total_pages + 1):
+        p = m.page(n)
+        if p["warnings"] or len(p["lines"]) != p["line_count"]:
+            problems.append((n, p["warnings"] or [f'{len(p["lines"])} baris dari {p["line_count"]}']))
+        headers += sum(1 for l in p["lines"] if l["type"] == "header")
+        basmalahs += sum(1 for l in p["lines"] if l["type"] == "basmalah")
+    print(f"\nTata letak: {headers} header surah, {basmalahs} basmalah (seharusnya 114 dan 112)")
+    print("semua halaman pas dengan jumlah barisnya" if not problems else f"halaman bermasalah: {problems[:10]}")
+else:
+    print("\nTata letak halaman dicek penuh setelah ke-114 file ayat ada.")

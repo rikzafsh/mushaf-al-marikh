@@ -139,15 +139,25 @@ body:not(.no-colors) .run.c-green  { background: var(--green-bg); }
 body:not(.no-colors) .run.c-blue   { background: var(--blue-bg); }
 body:not(.no-colors) .run.c-purple { background: var(--purple-bg); }
 
-/* penanda awal surah: pil kecil di tepi atas baris */
-.surah-pill {
-  position: absolute; right: 1.5cqw; top: 0; transform: translateY(-55%); z-index: 3;
-  display: inline-flex; align-items: baseline; gap: .8cqw; line-height: 1.2;
-  background: #fff; border: 1px solid var(--edge); border-radius: 99px;
-  padding: .2cqw 2cqw; box-shadow: 0 1px 3px rgba(0,0,0,.12);
+/* header surah (1 baris) */
+.line.surah-header {
+  align-items: center; justify-content: space-between; gap: 2cqw;
+  margin: .5cqw 0; padding: 0 3cqw;
+  border: .4cqw double #b08d3c; border-radius: 1.4cqw;
+  background: linear-gradient(#fbf4de, #f1e4ba);
+  color: #3f3210;
 }
-.surah-pill .ar { font-size: 3cqw; }
-.surah-pill small { font-size: 1.9cqw; color: var(--muted); font-family: system-ui, sans-serif; }
+.sh-name { flex: 1; display: flex; flex-direction: column; align-items: center; line-height: 1.15; text-align: center; }
+.sh-name .ar { font-size: 3.9cqw; }
+.sh-name small { font-size: 1.8cqw; color: #6b5a2e; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.sh-meta {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 2.2cqw; color: #6b5a2e; white-space: nowrap; direction: ltr; min-width: 14cqw; text-align: center;
+}
+.sh-meta:last-child { }
+
+/* basmalah (1 baris, rata tengah) */
+.line.basmalah { align-items: center; justify-content: center; }
 
 /* tanda ۞ di awal thumn */
 .thumn {

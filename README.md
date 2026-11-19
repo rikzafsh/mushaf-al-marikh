@@ -38,7 +38,13 @@ Surah yang file ayatnya belum ada tetap muncul di bagian yang tepat, berisi cata
   berarti bagian itu dimulai/berakhir di tengah ayat.
 
 ### Pembagian baris dan bagian
-Satu halaman = 15 baris (halaman 1 dan 2 = 7 baris, diatur di `SPECIAL_PAGE_LINES`).
+Satu halaman = 15 baris (halaman 1 dan 2 = 7 baris, diatur di `SPECIAL_PAGE_LINES`; angka itu
+sudah termasuk baris header dan basmalah).
+
+Setiap awal surah: **1 baris header** (nama surah, urutan, jumlah ayat) lalu **1 baris basmalah**
+rata tengah — kecuali Al-Fatihah (basmalah sudah ayat 1) dan At-Taubah (`NO_BASMALAH_SURAHS`).
+Baris-baris ini ikut dihitung dalam 15 baris, jadi baris teks berkurang sesuai jumlah surah
+yang dimulai di halaman itu; teks surah baru selalu mulai di baris baru.
 Bagian **mengalir**: seluruh kata di satu halaman dibagi seimbang ke semua baris
 (`partition_lines` di `mushaf_data.py`), lalu warna mengikuti bagiannya, sehingga
 pergantian bagian bisa terjadi di tengah baris. Rentang ayat tiap bagian ditampilkan
@@ -105,4 +111,3 @@ pada `extract_waqf.py` dan jalankan dengan `--source <nama>`.
 ## Catatan
 - Fon Arab: **LPMQ IsepMisbah**. Simpan fail fon di `static/fonts/LPMQ IsepMisbah.ttf`
   (nama fail persis seperti itu). Tanpa fail tersebut, tampilan memakai fon cadangan sistem.
-- Penanda awal surah berupa label kecil di tepi atas baris, tidak memakai baris sendiri.

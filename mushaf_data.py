@@ -22,8 +22,13 @@ from pathlib import Path
 DATA_DIR = Path(__file__).parent / "data"
 
 GRID_ROWS = 15  # jumlah baris satu halaman
-# Halaman dengan jumlah baris khusus: halaman 1 dan 2 hanya 7 baris.
+# Halaman dengan jumlah baris khusus: halaman 1 dan 2 hanya 7 baris
+# (TERMASUK baris header surah dan basmalah).
 SPECIAL_PAGE_LINES = {1: 7, 2: 7}
+
+# Surah tanpa baris basmalah: Al-Fatihah (basmalah sudah ayat 1) dan At-Taubah.
+NO_BASMALAH_SURAHS = {1, 9}
+BASMALAH_FALLBACK = "بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ"
 
 SECTION_COLORS = ["red", "yellow", "green", "blue", "purple"]
 SECTION_LABELS = ["Merah", "Kuning", "Hijau", "Biru muda", "Ungu"]
@@ -104,38 +109,51 @@ def base_len(text: str) -> int:
     return sum(1 for c in text if not unicodedata.category(c).startswith("M"))
 
 
-def partition_lines(weights: list[float], k: int) -> list[int]:
-    """Bagi urutan bobot menjadi k baris (tidak kosong bila memungkinkan)
-    dengan meminimalkan jumlah kuadrat bobot tiap baris (=> baris seimbang).
-    Mengembalikan daftar ukuran tiap baris (jumlah token)."""
+def partition_all(weights: list[float], kmax: int):
+    """Tabel DP pembagian `weights` ke k baris untuk SEMUA k = 1..kmax (minimal jumlah kuadrat
+    bobot tiap baris => baris seimbang). Mengembalikan (dp, cut); dp[k][n] = biaya k baris."""
     n = len(weights)
-    if n == 0:
-        return [0] * k
-    if n <= k:
-        return [1] * n + [0] * (k - n)
+    kmax = max(1, min(kmax, n))
     pre = [0.0]
     for w in weights:
         pre.append(pre[-1] + w)
     inf = float("inf")
-    dp = [[inf] * (n + 1) for _ in range(k + 1)]
-    cut = [[0] * (n + 1) for _ in range(k + 1)]
+    dp = [[inf] * (n + 1) for _ in range(kmax + 1)]
+    cut = [[0] * (n + 1) for _ in range(kmax + 1)]
     dp[0][0] = 0.0
-    for j in range(1, k + 1):
-        for i in range(j, n - (k - j) + 1):
+    for j in range(1, kmax + 1):
+        for i in range(j, n + 1):
             best, arg = inf, j - 1
             for m in range(j - 1, i):
-                if dp[j - 1][m] == inf:
+                prev = dp[j - 1][m]
+                if prev == inf:
                     continue
-                c = dp[j - 1][m] + (pre[i] - pre[m]) ** 2
+                c = prev + (pre[i] - pre[m]) ** 2
                 if c < best:
                     best, arg = c, m
             dp[j][i], cut[j][i] = best, arg
+    return dp, cut
+
+
+def partition_sizes(cut, n: int, k: int) -> list[int]:
+    """Ukuran (jumlah token) tiap baris untuk pembagian n token ke k baris."""
     sizes, i = [], n
     for j in range(k, 0, -1):
         m = cut[j][i]
         sizes.append(i - m)
         i = m
     return sizes[::-1]
+
+
+def partition_lines(weights: list[float], k: int) -> list[int]:
+    """Bagi bobot menjadi tepat k baris (baris kosong di akhir bila token < k)."""
+    n = len(weights)
+    if n == 0:
+        return [0] * k
+    if n <= k:
+        return [1] * n + [0] * (k - n)
+    _, cut = partition_all(weights, k)
+    return partition_sizes(cut, n, k)
 
 
 # --------------------------------------------------------------------------
@@ -308,28 +326,10 @@ class MushafData:
                 "label": self._range_label(spec["start"], spec["end"]),
             })
 
-        lines = []
+        lines: list[dict] = []
+        warnings: list[str] = []
         if not missing:
-            weights = [base_len(t["text"]) + 1 + (2 if t["end"] else 0) + (2 if t["thumn"] else 0)
-                       for t in tokens]
-            sizes = partition_lines(weights, total_lines)
-            pos = 0
-            for r, sz in enumerate(sizes):
-                chunk = tokens[pos:pos + sz]
-                pos += sz
-                runs = []
-                for t in chunk:
-                    if not runs or runs[-1]["sec"] != t["sec"]:
-                        runs.append({"sec": t["sec"], "color": sections[t["sec"]]["color"],
-                                     "label": sections[t["sec"]]["label"], "tokens": []})
-                    runs[-1]["tokens"].append(t)
-                lines.append({
-                    "row": row_start + r,
-                    "runs": runs,
-                    "sparse": len(chunk) < 4,
-                    "headers": [t["header"] for t in chunk if t["header"]],
-                    "notes": [t["thumn"] for t in chunk if t["thumn"]],
-                })
+            lines, warnings = self._layout_lines(n, tokens, sections, total_lines, row_start)
         return {
             "number": n,
             "juz": juz,
@@ -338,5 +338,94 @@ class MushafData:
             "line_count": total_lines,
             "row_start": row_start,
             "lines": lines,
+            "warnings": warnings,
             "missing": sorted(missing),
         }
+
+    def basmalah_text(self) -> str:
+        rec = (self.ayat(1) or {}).get(1)
+        text = " ".join(self._words(rec)) if rec else ""
+        return text or BASMALAH_FALLBACK
+
+    def _layout_lines(self, n, tokens, sections, total_lines, row_start):
+        """Susun baris halaman: header surah (1 baris) + basmalah (1 baris, rata tengah,
+        kecuali surah 1 dan 9) di setiap awal surah, sisanya baris teks yang mengalir.
+        Seluruhnya = total_lines baris. Teks surah baru selalu mulai di baris baru."""
+        warnings: list[str] = []
+        # --- pecah token menjadi segmen: lanjutan surah sebelumnya + tiap surah yang dimulai
+        segs: list[dict] = []
+        for t in tokens:
+            if t["header"] or not segs:
+                segs.append({"surah": t["header"], "tokens": []})
+            segs[-1]["tokens"].append(t)
+
+        def blocks(with_header=True, with_basmalah=True):
+            return sum((1 if with_header else 0) + (1 if with_basmalah and sg["surah"]["id"] not in NO_BASMALAH_SURAHS else 0)
+                       for sg in segs if sg["surah"])
+
+        with_header, with_basmalah = True, True
+        L = total_lines - blocks()
+        if L < len(segs):
+            with_basmalah = False
+            L = total_lines - blocks(with_basmalah=False)
+            warnings.append("baris tidak cukup: basmalah dihilangkan")
+        if L < len(segs):
+            with_header = False
+            L = total_lines - blocks(False, False)
+            warnings.append("baris tidak cukup: header surah dihilangkan")
+
+        # --- alokasi jumlah baris teks per segmen (biaya total minimum)
+        weights = [[base_len(t["text"]) + 1 + (2 if t["end"] else 0) + (2 if t["thumn"] else 0)
+                    for t in sg["tokens"]] for sg in segs]
+        tables = []
+        for w in weights:
+            dp, cut = partition_all(w, L)
+            tables.append((dp, cut, min(len(w), L)))
+        inf = float("inf")
+        J = min(L, sum(k for _, _, k in tables))
+        f = [[inf] * (J + 1) for _ in range(len(segs) + 1)]
+        back = [[0] * (J + 1) for _ in range(len(segs) + 1)]
+        f[0][0] = 0.0
+        for i, (dp, _, kmax) in enumerate(tables, 1):
+            for j in range(i, J + 1):
+                for k in range(1, min(kmax, j) + 1):
+                    c = f[i - 1][j - k] + dp[k][len(weights[i - 1])]
+                    if c < f[i][j]:
+                        f[i][j], back[i][j] = c, k
+        alloc, j = [0] * len(segs), J
+        for i in range(len(segs), 0, -1):
+            alloc[i - 1] = back[i][j]
+            j -= alloc[i - 1]
+
+        # --- rakit baris berurutan
+        lines: list[dict] = []
+        row = row_start
+        for sg, (dp, cut, _), w, k in zip(segs, tables, weights, alloc):
+            sid = sg["surah"]["id"] if sg["surah"] else None
+            if sid and with_header:
+                lines.append({"type": "header", "row": row, "surah": sg["surah"]})
+                row += 1
+                if with_basmalah and sid not in NO_BASMALAH_SURAHS:
+                    lines.append({"type": "basmalah", "row": row, "text": self.basmalah_text()})
+                    row += 1
+            toks, pos = sg["tokens"], 0
+            for sz in partition_sizes(cut, len(w), k) if k else []:
+                chunk = toks[pos:pos + sz]
+                pos += sz
+                runs = []
+                for t in chunk:
+                    if not runs or runs[-1]["sec"] != t["sec"]:
+                        runs.append({"sec": t["sec"], "color": sections[t["sec"]]["color"],
+                                     "label": sections[t["sec"]]["label"], "tokens": []})
+                    runs[-1]["tokens"].append(t)
+                lines.append({
+                    "type": "text",
+                    "row": row,
+                    "runs": runs,
+                    "sparse": len(chunk) < 4,
+                    "notes": [t["thumn"] for t in chunk if t["thumn"]],
+                })
+                row += 1
+        if row - row_start != total_lines:
+            warnings.append(f"jumlah baris {row - row_start} dari {total_lines}")
+        return lines, warnings
