@@ -15,6 +15,7 @@ Aturan pada mushaf.json:
 from __future__ import annotations
 
 import json
+import re
 import unicodedata
 from functools import lru_cache
 from pathlib import Path
@@ -29,6 +30,10 @@ SPECIAL_PAGE_LINES = {1: 7, 2: 7}
 # Surah tanpa baris basmalah: Al-Fatihah (basmalah sudah ayat 1) dan At-Taubah.
 NO_BASMALAH_SURAHS = {1, 9}
 BASMALAH_FALLBACK = "بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ"
+
+# Catchword (kata penuntun) di pojok kiri bawah: kata pertama halaman berikutnya.
+# Bila kata itu pendek (huruf dasar <= CATCHWORD_SHORT), ambil dua kata.
+CATCHWORD_SHORT = 3
 
 SECTION_COLORS = ["red", "yellow", "green", "blue", "purple"]
 SECTION_LABELS = ["Merah", "Kuning", "Hijau", "Biru muda", "Ungu"]
@@ -154,6 +159,79 @@ def partition_lines(weights: list[float], k: int) -> list[int]:
         return [1] * n + [0] * (k - n)
     _, cut = partition_all(weights, k)
     return partition_sizes(cut, n, k)
+
+
+# --------------------------------------------------------------------------
+# Kata kunci hafalan (margin luar halaman)
+# --------------------------------------------------------------------------
+AR_DIGITS = str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩")
+
+# True  -> kata kunci tanpa harakat/tanda (ringkas, seperti contoh);
+# False -> kata kunci memakai harakat asli data.
+KEYWORD_STRIP_DIACRITICS = True
+# Kata dianggap "pendek" bila jumlah hurufnya <= ini; kata pendek diberi pasangan kata di sebelahnya.
+KEYWORD_SHORT = 3
+# Kata lemah (partikel/penghubung) yang juga diberi pasangan walau lebih dari 3 huruf (tanpa harakat).
+KEYWORD_WEAK_WORDS = {
+    "واذا", "فاذا", "اذا", "ولقد", "لقد", "وان", "فان", "ولكن", "لكن", "وما", "فما",
+    "ولا", "فلا", "ومن", "فمن", "وهو", "وهم", "ثم", "بل", "قد", "الذين", "الذي", "التي",
+}
+# Pada kata AKHIR, kata penafian di depannya ikut diambil ("لا يشعرون").
+KEYWORD_NEGATORS = {"لا", "لم", "لن"}
+# Tinggi satu baris kata kunci, dalam satuan "baris halaman" (1 = tinggi satu baris teks).
+KEYWORD_ROW_UNITS = 0.34
+
+# Nama tanda waqaf yang ditampilkan di batas blok yang jatuh di tengah ayat.
+WAQF_LABELS = {
+    "\u06D6": "صلى", "\u06D7": "قلى", "\u06D8": "م", "\u06D9": "لا",
+    "\u06DA": "ج", "\u06DB": "∴", "\u06DC": "س",
+}
+
+
+def _drop_signs(text: str) -> str:
+    """Ambil hanya kata aslinya: buang token tanda berdiri sendiri dan tanda waqaf."""
+    parts = [p for p in text.split() if not is_sign_token(p)]
+    return "".join(c for c in " ".join(parts) if c not in SIGN_CHARS and c not in _PLACEHOLDERS)
+
+
+def plain_word(text: str) -> str:
+    """Kata tanpa harakat/tanda: dipakai untuk menilai pendek/lemah dan untuk tampilan ringkas."""
+    w = _drop_signs(text)
+    w = re.sub("\u0649[\u064B-\u065F\u0670]*\u0655", "\u0626", w)   # ىٕ -> ئ (ejaan Kemenag)
+    return "".join(c for c in w if not unicodedata.category(c).startswith("M"))
+
+
+def keyword_form(text: str) -> str:
+    return plain_word(text) if KEYWORD_STRIP_DIACRITICS else _drop_signs(text)
+
+
+_HAMZA_ALEF = str.maketrans("أإآٱ", "اااا")
+
+
+def _is_weak(plain: str) -> bool:
+    plain = plain.translate(_HAMZA_ALEF)
+    return len(plain) <= KEYWORD_SHORT or plain in KEYWORD_WEAK_WORDS
+
+
+def _place_keys(rows: list[dict], r: float, lo: float, hi: float) -> None:
+    """Tempatkan baris kata kunci secara vertikal. Tiap baris ingin sejajar dengan barisnya
+    (`anchor_row`); yang bertumpuk disusun berurutan dan dipusatkan di sekitar baris asalnya."""
+    clusters: list[dict] = []
+    for k, row in enumerate(rows):
+        clusters.append({"i0": k, "n": 1, "sum": row["anchor_row"] - 0.5 - r / 2})
+        while len(clusters) > 1:
+            a, b = clusters[-2], clusters[-1]
+            if a["sum"] / a["n"] + a["n"] * r <= b["sum"] / b["n"] + 1e-9:
+                break
+            clusters[-2:] = [{"i0": a["i0"], "n": a["n"] + b["n"],
+                              "sum": a["sum"] + b["sum"] - b["n"] * a["n"] * r}]
+    prev_end = lo
+    for c in clusters:
+        top = min(max(c["sum"] / c["n"], lo), max(lo, hi - c["n"] * r))
+        top = max(top, prev_end)
+        for j in range(c["n"]):
+            rows[c["i0"] + j]["top"] = round(top + j * r, 3)
+        prev_end = top + c["n"] * r
 
 
 # --------------------------------------------------------------------------
@@ -328,8 +406,9 @@ class MushafData:
 
         lines: list[dict] = []
         warnings: list[str] = []
+        keys: list[dict] = []
         if not missing:
-            lines, warnings = self._layout_lines(n, tokens, sections, total_lines, row_start)
+            lines, warnings, keys = self._layout_lines(n, tokens, sections, total_lines, row_start)
         return {
             "number": n,
             "juz": juz,
@@ -338,9 +417,41 @@ class MushafData:
             "line_count": total_lines,
             "row_start": row_start,
             "lines": lines,
+            "keywords": keys,
+            "key_row_units": KEYWORD_ROW_UNITS,
             "warnings": warnings,
+            "catchword": self.catchword(n),
             "missing": sorted(missing),
         }
+
+    def catchword(self, n: int):
+        """Satu atau dua kata pertama halaman n+1 (dua kata bila kata pertama pendek).
+        None untuk halaman terakhir atau bila data ayatnya belum ada."""
+        nxt = self._layout.get(n + 1)
+        if not nxt:
+            return None
+        s, a, off = nxt[0]["start"]
+        out: list[str] = []
+        first = True
+        while s <= 114 and len(out) < 2:
+            data = self.ayat(s)
+            rec = data.get(a) if data else None
+            words = self._words(rec) if rec else []
+            if not words:
+                break
+            i = raw_cut(words, off, SECTION_WC_REAL_WORDS) if first else 0
+            first = False
+            for w in words[i:]:
+                if is_sign_token(w):
+                    continue
+                w = "".join(c for c in w if c not in SIGN_CHARS).strip()
+                out.append(w)
+                if len(out) >= 2 or base_len(out[0]) > CATCHWORD_SHORT:
+                    break
+            if len(out) >= 2 or (out and base_len(out[0]) > CATCHWORD_SHORT):
+                break
+            s, a = self._next_pos(s, a)
+        return " ".join(out) if out else None
 
     def basmalah_text(self) -> str:
         rec = (self.ayat(1) or {}).get(1)
@@ -399,6 +510,7 @@ class MushafData:
 
         # --- rakit baris berurutan
         lines: list[dict] = []
+        flat: list[dict] = []
         row = row_start
         for sg, (dp, cut, _), w, k in zip(segs, tables, weights, alloc):
             sid = sg["surah"]["id"] if sg["surah"] else None
@@ -412,6 +524,9 @@ class MushafData:
             for sz in partition_sizes(cut, len(w), k) if k else []:
                 chunk = toks[pos:pos + sz]
                 pos += sz
+                for t in chunk:
+                    t["_row"] = row
+                flat += chunk
                 runs = []
                 for t in chunk:
                     if not runs or runs[-1]["sec"] != t["sec"]:
@@ -428,4 +543,67 @@ class MushafData:
                 row += 1
         if row - row_start != total_lines:
             warnings.append(f"jumlah baris {row - row_start} dari {total_lines}")
-        return lines, warnings
+        keys = self._keyword_rows(flat, sections)
+        _place_keys(keys, KEYWORD_ROW_UNITS, 0.0, float(GRID_ROWS))
+        return lines, warnings, keys
+
+    # ---- kata kunci hafalan ----------------------------------------------
+    def _keyword_rows(self, toks: list[dict], sections: list[dict]) -> list[dict]:
+        """Baris kata kunci untuk satu halaman, berurutan dari atas ke bawah:
+        * awal halaman      : kata pertama ...
+        * akhir ayat        : kata terakhir | nomor ayat | kata pertama ayat berikutnya
+        * batas blok di tengah ayat : kata terakhir | (tanda waqaf) | kata pertama blok berikutnya
+        * akhir halaman     : ... kata terakhir
+        Baris menempel pada baris teks yang memuat kata terakhir (atau kata pertama) tersebut."""
+        n = len(toks)
+        if not n:
+            return []
+        plain = [plain_word(t["text"]) for t in toks]
+
+        def fwd(i: int, count: int) -> list[int]:
+            out = [i]
+            while len(out) < count and out[-1] + 1 < n and toks[out[-1]]["end"] is None:
+                out.append(out[-1] + 1)
+            return out
+
+        def back(i: int, count: int) -> list[int]:
+            out = [i]
+            while len(out) < count and out[0] - 1 >= 0 and toks[out[0] - 1]["end"] is None:
+                out.insert(0, out[0] - 1)
+            return out
+
+        def first_words(i: int, force2: bool = False) -> str:
+            idx = fwd(i, 2) if (force2 or _is_weak(plain[i])) else [i]
+            return " ".join(keyword_form(toks[k]["text"]) for k in idx)
+
+        def last_words(i: int, force2: bool = False) -> str:
+            idx = [i]
+            if force2 or _is_weak(plain[i]) or (i - 1 >= 0 and toks[i - 1]["end"] is None
+                                               and plain[i - 1] in KEYWORD_NEGATORS):
+                idx = back(i, 2)
+            return " ".join(keyword_form(toks[k]["text"]) for k in idx)
+
+        def sign_label(i: int) -> str | None:
+            found = [c for c in toks[i]["text"] if c in WAQF_LABELS]
+            return WAQF_LABELS[found[-1]] if found else None
+
+        def row(i: int, kind: str, parts: list[tuple[str, str]]) -> dict:
+            sec = sections[toks[i]["sec"]]
+            return {"kind": kind, "anchor": i, "anchor_row": toks[i]["_row"],
+                    "color": sec["color"], "label": sec["label"],
+                    "parts": [{"t": t, "v": v} for t, v in parts]}
+
+        rows = [row(0, "start", [("w", first_words(0)), ("dots", "…")])]
+        for i in range(n):
+            if i == n - 1:
+                rows.append(row(i, "end", [("dots", "…"), ("w", last_words(i))]))
+            elif toks[i]["end"] is not None:
+                rows.append(row(i, "ayah", [("w", last_words(i)),
+                                            ("num", str(toks[i]["end"]).translate(AR_DIGITS)),
+                                            ("w", first_words(i + 1))]))
+            elif toks[i]["sec"] != toks[i + 1]["sec"]:
+                sign = sign_label(i)
+                rows.append(row(i, "mid", [("w", last_words(i, True)),
+                                           ("sign", f"({sign})") if sign else ("sep", "|"),
+                                           ("w", first_words(i + 1, True))]))
+        return rows

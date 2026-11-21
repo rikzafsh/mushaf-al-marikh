@@ -1,12 +1,16 @@
-/* Fon mushaf: simpan fail di static/fonts/LPMQ IsepMisbah.ttf */
+/* Fon mushaf: simpan fail di static/fonts/LPMQ IsepMisbah.ttf
+   Angka Arabic-Indic (U+0660–0669, U+06F0–06F9) sengaja DIKELUARKAN dari LPMQ lewat
+   unicode-range, sehingga selalu memakai fon angka (--num-font) di bawah. */
 @font-face {
   font-family: "LPMQ IsepMisbah";
   src: url("../fonts/LPMQ%20IsepMisbah.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0000-065F, U+066A-06EF, U+06FA-FFFF;
 }
 
+/* ---------- tema ---------- */
 :root {
   color-scheme: light;
   --bg: #f4efe6;
@@ -15,6 +19,11 @@
   --paper: #fffdf8;
   --edge: #d9cfbd;
   --accent: #2f6b4f;
+  --accent-ink: #ffffff;
+  --control-bg: #ffffff;
+  --code-bg: rgba(255,255,255,.8);
+  --shadow: rgba(0,0,0,.08);
+  --shadow-strong: rgba(0,0,0,.25);
 
   --red-bg: #ffdada;    --red-bd: #e53935;
   --yellow-bg: #fff4bf; --yellow-bd: #f2b705;
@@ -22,7 +31,45 @@
   --blue-bg: #d4f0fb;   --blue-bd: #29a8e0;
   --purple-bg: #e7dbf8; --purple-bd: #8a5cd0;
 
+  --gold: #b07d12;          /* ۞ */
+  --gold-dim: #6b5a2e;      /* nomor ayat */
+  --note: #8a5f0a;          /* keterangan hizb di margin */
+  --hdr-bg1: #fbf4de; --hdr-bg2: #f1e4ba; --hdr-bd: #b08d3c; --hdr-ink: #3f3210; --hdr-sub: #6b5a2e;
+
   --ar-font: "LPMQ IsepMisbah", "Traditional Arabic", "Noto Naskh Arabic", serif;
+  /* fon KHUSUS angka Arabic-Indic (nomor ayat, nomor halaman, urutan surah, jumlah ayat) */
+  --num-font: "Noto Naskh Arabic", "Amiri", "Traditional Arabic", "Segoe UI", Tahoma, "Arial", sans-serif;
+  --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* lebar kolom kata kunci di pinggir luar halaman (0 bila dimatikan) */
+  --kw-col: 18cqw;
+}
+body.no-keys { --kw-col: 0cqw; }
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14120f;
+  --ink: #ece6d8;
+  --muted: #a39a88;
+  --paper: #1f1c17;
+  --edge: #3b362c;
+  --accent: #5fb58a;
+  --accent-ink: #0e1a13;
+  --control-bg: #2a261f;
+  --code-bg: rgba(0,0,0,.35);
+  --shadow: rgba(0,0,0,.5);
+  --shadow-strong: rgba(0,0,0,.6);
+
+  --red-bg: #5a2828;    --red-bd: #ef6b66;
+  --yellow-bg: #574a18; --yellow-bd: #e0b22c;
+  --green-bg: #234a2c;  --green-bd: #5ec26c;
+  --blue-bg: #1d4558;   --blue-bd: #4bbcf0;
+  --purple-bg: #402f5c; --purple-bd: #a98be6;
+
+  --gold: #e0b64e;
+  --gold-dim: #d8c27a;
+  --note: #e0b05a;
+  --hdr-bg1: #3b3220; --hdr-bg2: #2d2617; --hdr-bd: #b08d3c; --hdr-ink: #f0e4c0; --hdr-sub: #c9b98a;
 }
 
 * { box-sizing: border-box; }
@@ -30,10 +77,12 @@ html, body { margin: 0; }
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--ui-font);
   padding-bottom: 2rem;
+  transition: background-color .2s, color .2s;
 }
 .ar { font-family: var(--ar-font); }
+.ar-num { font-family: var(--num-font); }
 
 /* ---------- toolbar ---------- */
 .toolbar {
@@ -47,16 +96,16 @@ body {
 .tool label { display: flex; align-items: center; gap: .4rem; font-size: .85rem; color: var(--muted); }
 select, input[type=number], button {
   font: inherit; font-size: .9rem; padding: .35rem .55rem;
-  border: 1px solid var(--edge); border-radius: .5rem; background: #fff; color: var(--ink);
+  border: 1px solid var(--edge); border-radius: .5rem; background: var(--control-bg); color: var(--ink);
 }
 input[type=number] { width: 5.2rem; }
 button { cursor: pointer; }
 button:hover, .btn:hover { border-color: var(--accent); }
 
 .seg { gap: 0; border: 1px solid var(--edge); border-radius: .5rem; overflow: hidden; }
-.seg a { padding: .35rem .8rem; font-size: .9rem; color: var(--ink); text-decoration: none; background: #fff; }
+.seg a { padding: .35rem .8rem; font-size: .9rem; color: var(--ink); text-decoration: none; background: var(--control-bg); }
 .seg a + a { border-left: 1px solid var(--edge); }
-.seg a.on { background: var(--accent); color: #fff; }
+.seg a.on { background: var(--accent); color: var(--accent-ink); }
 
 /* ---------- legenda ---------- */
 .legend {
@@ -78,8 +127,8 @@ button:hover, .btn:hover { border-color: var(--accent); }
 }
 .spread.view-1 .page { width: min(92vw, 560px); }
 .spread.view-2 .page { width: min(46vw, 560px); }
-.spread.view-2 .page-left  { border-right: 0; border-radius: .6rem 0 0 .6rem; box-shadow: inset -14px 0 14px -14px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.08); }
-.spread.view-2 .page-right { border-left: 0;  border-radius: 0 .6rem .6rem 0; box-shadow: inset 14px 0 14px -14px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.08); }
+.spread.view-2 .page-left  { border-right: 0; border-radius: .6rem 0 0 .6rem; box-shadow: inset -14px 0 14px -14px var(--shadow-strong), 0 2px 10px var(--shadow); }
+.spread.view-2 .page-right { border-left: 0;  border-radius: 0 .6rem .6rem 0; box-shadow: inset 14px 0 14px -14px var(--shadow-strong), 0 2px 10px var(--shadow); }
 
 /* ---------- satu halaman ---------- */
 .page {
@@ -88,7 +137,7 @@ button:hover, .btn:hover { border-color: var(--accent); }
   background: var(--paper);
   border: 1px solid var(--edge);
   border-radius: .6rem;
-  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  box-shadow: 0 2px 10px var(--shadow);
 }
 /* cqw tidak bisa dipakai pada elemen container itu sendiri -> pakai pembungkus */
 .page-inner {
@@ -96,8 +145,8 @@ button:hover, .btn:hover { border-color: var(--accent); }
   padding: 2.2cqw 4cqw 2cqw 4cqw;
 }
 /* sisi luar halaman dilebihkan untuk keterangan thumn/hizb */
-.page-right .page-inner { padding-right: 12cqw; }
-.page-left  .page-inner { padding-left: 12cqw; }
+.page-right .page-inner { padding-right: calc(12cqw + var(--kw-col)); }
+.page-left  .page-inner { padding-left: calc(12cqw + var(--kw-col)); }
 .page-blank { background: transparent; border-color: transparent; box-shadow: none; }
 
 .page-head {
@@ -106,10 +155,9 @@ button:hover, .btn:hover { border-color: var(--accent); }
 }
 .page-head .surah-names { font-size: 3.4cqw; direction: rtl; }
 
-
 /* 15 baris */
 .page-body {
-  flex: 1; min-height: 0;
+  flex: 1; min-height: 0; position: relative;
   display: grid;
   grid-template-rows: repeat(15, minmax(0, 1fr));
 }
@@ -143,25 +191,26 @@ body:not(.no-colors) .run.c-purple { background: var(--purple-bg); }
 .line.surah-header {
   align-items: center; justify-content: space-between; gap: 2cqw;
   margin: .5cqw 0; padding: 0 3cqw;
-  border: .4cqw double #b08d3c; border-radius: 1.4cqw;
-  background: linear-gradient(#fbf4de, #f1e4ba);
-  color: #3f3210;
+  border: .4cqw double var(--hdr-bd); border-radius: 1.4cqw;
+  background: linear-gradient(var(--hdr-bg1), var(--hdr-bg2));
+  color: var(--hdr-ink);
 }
 .sh-name { flex: 1; display: flex; flex-direction: column; align-items: center; line-height: 1.15; text-align: center; }
 .sh-name .ar { font-size: 3.9cqw; }
-.sh-name small { font-size: 1.8cqw; color: #6b5a2e; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.sh-name small { font-size: 1.8cqw; color: var(--hdr-sub); font-family: var(--ui-font); }
 .sh-meta {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 2.2cqw; color: #6b5a2e; white-space: nowrap; direction: ltr; min-width: 14cqw; text-align: center;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+  min-width: 12cqw; color: var(--hdr-sub); font-family: var(--ui-font);
 }
-.sh-meta:last-child { }
+.sh-meta small { font-size: 1.7cqw; letter-spacing: .04em; text-transform: uppercase; }
+.sh-meta b { font-size: 4cqw; font-weight: 700; color: var(--hdr-ink); }
 
 /* basmalah (1 baris, rata tengah) */
 .line.basmalah { align-items: center; justify-content: center; }
 
 /* tanda ۞ di awal thumn */
 .thumn {
-  color: #b07d12; font-size: .85em; margin-inline-start: .3em;
+  color: var(--gold); font-size: .85em; margin-inline-start: .3em;
   font-family: var(--ar-font), "Segoe UI Symbol", "Traditional Arabic", serif;
 }
 
@@ -170,25 +219,60 @@ body:not(.no-colors) .run.c-purple { background: var(--purple-bg); }
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 9.5cqw; display: flex; flex-direction: column; align-items: center;
   text-align: center; line-height: 1.15; direction: ltr; white-space: nowrap;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: #8a5f0a; z-index: 2;
+  font-family: var(--ui-font);
+  color: var(--note); z-index: 2;
 }
 .margin-note b { font-size: 2.7cqw; font-weight: 700; }
 .margin-note small { font-size: 1.9cqw; }
-.page-right .margin-note { right: -11cqw; }
-.page-left  .margin-note { left: -11cqw; }
+.page-right .margin-note { right: calc(-11cqw - var(--kw-col)); }
+.page-left  .margin-note { left: calc(-11cqw - var(--kw-col)); }
 
-/* penanda akhir ayat */
+/* kata kunci hafalan: kolom di antara teks dan keterangan hizb, sejajar dengan baris terkait */
+.kw {
+  position: absolute; z-index: 2;
+  top: calc(var(--y) * 100% / 15);
+  height: calc(var(--kh) * 100% / 15);
+  width: calc(var(--kw-col) - 1.2cqw);
+  display: flex; align-items: center; justify-content: center; gap: .45em;
+  padding: 0 .6em; border-radius: 99px; border: 1px solid var(--edge);
+  font-family: var(--ar-font); font-size: 1.85cqw; line-height: 1;
+  white-space: nowrap; color: var(--ink);
+}
+.page-right .kw { right: calc(-1 * var(--kw-col) + .2cqw); }
+.page-left  .kw { left: calc(-1 * var(--kw-col) + .2cqw); }
+body.no-keys .kw { display: none; }
+body:not(.no-colors) .kw.c-red    { background: var(--red-bg);    border-color: var(--red-bd); }
+body:not(.no-colors) .kw.c-yellow { background: var(--yellow-bg); border-color: var(--yellow-bd); }
+body:not(.no-colors) .kw.c-green  { background: var(--green-bg);  border-color: var(--green-bd); }
+body:not(.no-colors) .kw.c-blue   { background: var(--blue-bg);   border-color: var(--blue-bd); }
+body:not(.no-colors) .kw.c-purple { background: var(--purple-bg); border-color: var(--purple-bd); }
+.kp.dots, .kp.sep { color: var(--muted); }
+.kp.sign { color: var(--gold); font-size: .85em; }
+.kp.num { font-family: var(--num-font); color: var(--gold-dim); font-weight: 700; font-size: .95em; }
+
+/* penanda akhir ayat: angka memakai fon angka, bukan LPMQ */
 .an {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 1.35em; height: 1.35em; margin-inline: .35em .1em;
   border: .07em solid currentColor; border-radius: 50%;
-  font-size: .62em; line-height: 1; padding: 0 .15em; vertical-align: middle; color: #6b5a2e;
+  font-family: var(--num-font);
+  font-size: .62em; line-height: 1; padding: 0 .15em; vertical-align: middle; color: var(--gold-dim);
 }
 
-/* rentang ayat tiap bagian, di bawah halaman */
-.page-foot { display: flex; justify-content: space-between; align-items: center; gap: 2cqw; }
-.ranges { list-style: none; display: flex; gap: 1cqw; margin: 0; padding: 0; font-size: 1.9cqw; direction: ltr; flex-wrap: wrap; }
+/* ---------- footer: catchword (kiri) · nomor halaman (tengah) · rentang bagian (kanan) ---------- */
+.page-foot {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 2cqw;
+  padding-top: 1cqw;
+}
+.catchword {
+  justify-self: start; direction: rtl; white-space: nowrap;
+  font-family: var(--ar-font); font-size: 3.4cqw; line-height: 1.2; color: var(--muted);
+}
+.page-foot .num { font-family: var(--num-font); font-size: 3.6cqw; color: var(--muted); }
+.ranges {
+  justify-self: end; list-style: none; display: flex; gap: 1cqw; margin: 0; padding: 0;
+  font-size: 1.9cqw; direction: ltr; flex-wrap: wrap; justify-content: flex-end;
+}
 .ranges li { padding: .2cqw 1.2cqw; border-radius: 99px; border: 1px solid transparent; color: var(--ink); }
 .ranges li.c-red { background: var(--red-bg); border-color: var(--red-bd); }
 .ranges li.c-yellow { background: var(--yellow-bg); border-color: var(--yellow-bd); }
@@ -196,7 +280,6 @@ body:not(.no-colors) .run.c-purple { background: var(--purple-bg); }
 .ranges li.c-blue { background: var(--blue-bg); border-color: var(--blue-bd); }
 .ranges li.c-purple { background: var(--purple-bg); border-color: var(--purple-bd); }
 body.no-colors .ranges li { background: none; border-color: var(--edge); }
-.page-foot .num { font-family: var(--ar-font); font-size: 3.6cqw; color: var(--muted); }
 
 /* halaman yang datanya belum ada */
 .missing-body { position: relative; display: grid; grid-template-rows: repeat(var(--n), 1fr); }
@@ -209,16 +292,38 @@ body.no-colors .band { background: none !important; }
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; font-size: 2.6cqw; color: var(--muted); line-height: 1.6;
 }
-.missing code { background: rgba(255,255,255,.8); padding: 0 .4em; border-radius: .3em; }
+.missing code { background: var(--code-bg); padding: 0 .4em; border-radius: .3em; }
 
 /* ---------- pager ---------- */
 .pager { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: .4rem; }
 .btn {
   display: inline-block; padding: .5rem 1rem; border: 1px solid var(--edge); border-radius: .6rem;
-  background: #fff; color: var(--ink); text-decoration: none; font-size: .9rem;
+  background: var(--control-bg); color: var(--ink); text-decoration: none; font-size: .9rem;
 }
 .btn.disabled { opacity: .4; pointer-events: none; }
 .pos { font-size: .85rem; color: var(--muted); min-width: 10rem; text-align: center; }
+
+/* ---------- layar penuh ---------- */
+.fs-exit {
+  display: none; position: fixed; top: .6rem; right: .6rem; z-index: 30;
+  opacity: .55; padding: .3rem .6rem; font-size: .8rem;
+}
+.fs-exit:hover { opacity: 1; }
+body.fs { padding-bottom: 0; overflow-x: hidden; }
+body.fs .fs-exit { display: block; }
+body.fs .legend { display: none; }
+/* toolbar disembunyikan; muncul bila kursor di tepi atas layar atau saat difokus */
+body.fs .toolbar {
+  position: fixed; left: 0; right: 0; top: 0;
+  transform: translateY(-100%); transition: transform .18s ease;
+}
+body.fs .toolbar::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 18px; }
+body.fs .toolbar:hover, body.fs .toolbar:focus-within { transform: none; }
+body.fs .spread { padding: .4rem; min-height: calc(100vh - 3.2rem); align-items: center; }
+body.fs .spread.view-1 .page { width: min(96vw, calc((100vh - 3.4rem) * 0.68)); }
+body.fs .spread.view-2 .page { width: min(48vw, calc((100vh - 3.4rem) * 0.68)); }
+body.fs .pager { margin-top: 0; padding-bottom: .4rem; }
+body.fs .fs-exit { top: .5rem; }
 
 @media (max-width: 640px) {
   .spread { padding: .5rem; }
@@ -227,7 +332,7 @@ body.no-colors .band { background: none !important; }
 }
 
 @media print {
-  .toolbar, .legend, .pager { display: none; }
+  .toolbar, .legend, .pager, .fs-exit { display: none; }
   body { background: #fff; }
   .page { box-shadow: none; }
 }

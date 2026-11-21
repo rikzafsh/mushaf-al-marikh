@@ -54,9 +54,53 @@ Jika `arabic_words` bernilai `null`, kata dipecah dari field `arabic` per spasi.
 ### Tampilan 2 halaman
 Mengikuti mushaf: `2 1`, `4 3`, `6 5`, ... (genap di kiri, ganjil di kanan).
 
+## Catchword, angka, tema, layar penuh
+
+- **Catchword**: satu kata pertama halaman berikutnya di pojok kiri bawah; dua kata bila kata
+  pertama pendek (huruf dasar <= `CATCHWORD_SHORT`, default 3, di `mushaf_data.py`).
+  Halaman terakhir tidak punya catchword.
+- **Angka Arabic-Indic** (nomor ayat, nomor halaman, urutan surah, jumlah ayat) memakai fon
+  angka terpisah, `--num-font` di `style.css` (Noto Naskh Arabic / Amiri / Traditional Arabic /
+  Segoe UI, mana yang tersedia). Selain itu angka Arab dikeluarkan dari fon LPMQ lewat
+  `unicode-range`. Untuk fon pilihan sendiri, tambahkan `@font-face` lalu taruh namanya paling
+  depan di `--num-font`.
+- **Mode gelap/terang**: tombol di toolbar; pilihan tersimpan di browser. Sebelum memilih,
+  mengikuti pengaturan sistem.
+- **Layar penuh**: tombol di toolbar atau tombol `F`. Toolbar tersembunyi dan muncul saat
+  kursor ke tepi atas; halaman diperbesar menyesuaikan tinggi layar. Pindah halaman tidak
+  memuat ulang browser, sehingga layar penuh tidak terlepas. Tanpa Fullscreen API (mis. iPhone)
+  dipakai tampilan penuh di dalam jendela.
+
+## Kata kunci hafalan
+
+Di pinggir luar halaman (kanan untuk halaman kanan, kiri untuk halaman kiri) tiap halaman punya
+baris-baris kata kunci, masing-masing sejajar dengan baris teks yang memuatnya dan berwarna
+sesuai bloknya:
+
+| baris | bentuk |
+|---|---|
+| awal halaman | `kata pertama …` |
+| akhir ayat | `kata terakhir ‹nomor ayat› kata pertama ayat berikutnya` |
+| batas blok di tengah ayat | `kata terakhir (nama tanda waqaf) kata pertama blok berikutnya` |
+| akhir halaman | `… kata terakhir` |
+
+Aturan jumlah kata (semua dapat diubah di bagian "Kata kunci hafalan" pada `mushaf_data.py`):
+- Kata awal: satu kata; dua kata bila kata pertama pendek (`KEYWORD_SHORT`, default <= 3 huruf)
+  atau termasuk kata lemah (`KEYWORD_WEAK_WORDS`, mis. `واذا`).
+- Kata akhir: satu kata; dua kata bila kata itu pendek, atau bila kata di depannya penafian
+  (`KEYWORD_NEGATORS`: لا لم لن), mis. `لا يشعرون`.
+- Batas blok di tengah ayat: selalu dua kata di kedua sisi. Nama tanda waqaf yang tampil:
+  صلى (ۖ), قلى (ۗ), م (ۘ), لا (ۙ), ج (ۚ), ∴ (ۛ), س (ۜ); bila tidak ada tanda, tampil `|`.
+- Kata tidak melewati batas ayat; kata ditulis tanpa harakat (`KEYWORD_STRIP_DIACRITICS = False`
+  untuk memakai harakat). Nomor ayat memakai angka Arabic-Indic dengan fon angka.
+- Baris yang bertumpuk pada satu baris teks disusun berurutan di sekitar baris asalnya.
+
+Tombol "Kata kunci" di toolbar menyembunyikannya (margin kembali sempit). Lebar kolom diatur
+oleh `--kw-col` di `style.css`.
+
 ## Fitur
 - Lompat ke surah atau nomor halaman; tombol 1 / 2 halaman
-- Navigasi keyboard: `←` berikutnya, `→` sebelumnya (arah baca kanan ke kiri)
+- Navigasi keyboard: `←` berikutnya, `→` sebelumnya (arah baca kanan ke kiri), `F` layar penuh
 - Warna bagian bisa dimatikan (tersimpan di browser)
 - Teks satu halaman otomatis mengecil bersama bila ada baris yang terlalu padat
 - API: `GET /api/page/<n>` (JSON halaman)

@@ -3,7 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>Mushaf Al-Marikh — {{ spread_label }}</title>
+  <script>
+    /* tema: pakai pilihan tersimpan, jika belum ada ikuti pengaturan sistem */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("mushaf-al-marikh:theme"); } catch (e) {}
+      if (t !== "dark" && t !== "light") {
+        t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <link rel="preload" href="{{ url_for('static', filename='fonts/LPMQ IsepMisbah.ttf') }}" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -28,9 +40,9 @@
       {% for line in p.lines %}
       {% if line.type == 'header' %}
       <div class="line surah-header" dir="rtl" style="grid-row: {{ line.row }}">
-        <span class="sh-meta">Surah ke-{{ line.surah.id }}</span>
+        <span class="sh-meta"><small>Surah</small><b class="ar-num">{{ line.surah.id|ar_digits }}</b></span>
         <span class="sh-name"><span class="ar">سورة {{ line.surah.arabic|trim }}</span><small>{{ line.surah.transliteration|trim }} · {{ line.surah.translation|trim }}</small></span>
-        <span class="sh-meta">{{ line.surah.num_ayah }} ayat</span>
+        <span class="sh-meta"><small>Ayat</small><b class="ar-num">{{ line.surah.num_ayah|ar_digits }}</b></span>
       </div>
       {% elif line.type == 'basmalah' %}
       <div class="line basmalah" dir="rtl" style="grid-row: {{ line.row }}"><span class="w">{{ line.text }}</span></div>
@@ -49,14 +61,23 @@
       </div>
       {% endif %}
       {% endfor %}
+      {# kata kunci hafalan: posisi vertikal (--y) dalam satuan baris halaman #}
+      {% for k in p.keywords %}
+      <div class="kw kw-{{ k.kind }} c-{{ k.color }}" dir="rtl" style="--y: {{ k.top }}; --kh: {{ p.key_row_units }}" title="Blok {{ k.label }}">
+        {%- for part in k.parts -%}
+        <span class="kp {{ part.t }}{{ ' ar-num' if part.t == 'num' }}">{{ part.v }}</span>
+        {%- endfor -%}
+      </div>
+      {% endfor %}
     </div>
     {% endif %}
 
     <footer class="page-foot">
+      {% if p.catchword %}<span class="catchword" title="Kata pertama halaman berikutnya">{{ p.catchword }}</span>{% else %}<span></span>{% endif %}
+      <span class="num ar-num">{{ p.number|ar_digits }}</span>
       <ul class="ranges">
         {% for sec in p.sections %}<li class="c-{{ sec.color }}">{{ sec.label }}</li>{% endfor %}
       </ul>
-      <span class="num">{{ p.number|ar_digits }}</span>
     </footer>
    </div>
   </article>
@@ -83,18 +104,22 @@
   <form class="tool" method="get" action="{{ url_for('viewer') }}">
     <input type="hidden" name="view" value="{{ view }}">
     <label>Halaman
-      <input type="number" name="page" min="1" max="{{ total_pages }}" value="{{ page }}">
+      <input type="number" id="page-input" name="page" min="1" max="{{ total_pages }}" value="{{ page }}">
     </label>
     <button>Buka</button>
   </form>
 
   <div class="tool seg" role="group" aria-label="Mode tampilan">
-    <a href="{{ url_for('viewer', page=page, view=1) }}" class="{{ 'on' if view == 1 }}">1 halaman</a>
-    <a href="{{ url_for('viewer', page=page, view=2) }}" class="{{ 'on' if view == 2 }}">2 halaman</a>
+    <a data-nav href="{{ url_for('viewer', page=page, view=1) }}" class="{{ 'on' if view == 1 }}">1 halaman</a>
+    <a data-nav href="{{ url_for('viewer', page=page, view=2) }}" class="{{ 'on' if view == 2 }}">2 halaman</a>
   </div>
 
   <button type="button" class="tool" id="toggle-colors" aria-pressed="true">Warna bagian: aktif</button>
+  <button type="button" class="tool" id="toggle-keys" aria-pressed="true">Kata kunci: aktif</button>
+  <button type="button" class="tool" id="toggle-theme" aria-pressed="false">🌙 Mode gelap</button>
+  <button type="button" class="tool" id="toggle-fs" aria-pressed="false">⛶ Layar penuh</button>
 </header>
+<button type="button" class="fs-exit" id="fs-exit">✕ Keluar layar penuh</button>
 
 <ul class="legend">
   {% for key, label in legend %}
@@ -111,13 +136,13 @@
 <nav class="pager">
   {# Mushaf dibaca dari kanan ke kiri: "berikutnya" di sisi kiri #}
   {% if next_page %}
-  <a class="btn" id="nav-next" rel="next" href="{{ url_for('viewer', page=next_page, view=view) }}">← Berikutnya</a>
+  <a class="btn" data-nav id="nav-next" rel="next" href="{{ url_for('viewer', page=next_page, view=view) }}">← Berikutnya</a>
   {% else %}<span class="btn disabled">← Berikutnya</span>{% endif %}
 
   <span class="pos">{{ spread_label }} dari {{ total_pages }}</span>
 
   {% if prev_page %}
-  <a class="btn" id="nav-prev" rel="prev" href="{{ url_for('viewer', page=prev_page, view=view) }}">Sebelumnya →</a>
+  <a class="btn" data-nav id="nav-prev" rel="prev" href="{{ url_for('viewer', page=prev_page, view=view) }}">Sebelumnya →</a>
   {% else %}<span class="btn disabled">Sebelumnya →</span>{% endif %}
 </nav>
 
