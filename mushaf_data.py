@@ -166,9 +166,12 @@ def partition_lines(weights: list[float], k: int) -> list[int]:
 # --------------------------------------------------------------------------
 AR_DIGITS = str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩")
 
-# True  -> kata kunci tanpa harakat/tanda (ringkas, seperti contoh);
-# False -> kata kunci memakai harakat asli data.
-KEYWORD_STRIP_DIACRITICS = True
+# True  -> kata kunci tanpa harakat (ringkas);
+# False -> kata kunci berharakat penuh seperti di data (default).
+KEYWORD_STRIP_DIACRITICS = False
+# Maksimal baris kata kunci per blok (bagian berwarna). Bila lebih, diambil yang tersebar
+# merata: pertama, tengah-tengah, dan terakhir (yang terakhir = sambungan ke blok berikutnya).
+KEYWORD_MAX_PER_BLOCK = 3
 # Kata dianggap "pendek" bila jumlah hurufnya <= ini; kata pendek diberi pasangan kata di sebelahnya.
 KEYWORD_SHORT = 3
 # Kata lemah (partikel/penghubung) yang juga diberi pasangan walau lebih dari 3 huruf (tanpa harakat).
@@ -181,12 +184,8 @@ KEYWORD_NEGATORS = {"لا", "لم", "لن"}
 # Tinggi satu baris kata kunci, dalam satuan "baris halaman" (1 = tinggi satu baris teks).
 KEYWORD_ROW_UNITS = 0.34
 
-# Nama tanda waqaf yang ditampilkan di batas blok yang jatuh di tengah ayat.
-WAQF_LABELS = {
-    "\u06D6": "صلى", "\u06D7": "قلى", "\u06D8": "م", "\u06D9": "لا",
-    "\u06DA": "ج", "\u06DB": "∴", "\u06DC": "س",
-}
-
+# Tanda waqaf yang dikenali pada batas blok di tengah ayat (ditampilkan dengan tandanya sendiri).
+WAQF_SIGNS_SHOWN = SIGN_CHARS
 
 def _drop_signs(text: str) -> str:
     """Ambil hanya kata aslinya: buang token tanda berdiri sendiri dan tanda waqaf."""
@@ -211,6 +210,23 @@ _HAMZA_ALEF = str.maketrans("أإآٱ", "اااا")
 def _is_weak(plain: str) -> bool:
     plain = plain.translate(_HAMZA_ALEF)
     return len(plain) <= KEYWORD_SHORT or plain in KEYWORD_WEAK_WORDS
+
+
+def _limit_rows(rows: list[dict], max_per: int) -> list[dict]:
+    """Batasi jumlah baris kata kunci per blok; yang dipilih tersebar merata
+    (pertama, tengah, terakhir) sehingga pergantian ayat di tengah boleh dilewati."""
+    by_sec: dict[int, list[dict]] = {}
+    for r in rows:
+        by_sec.setdefault(r["sec"], []).append(r)
+    keep: set[int] = set()
+    for lst in by_sec.values():
+        n = len(lst)
+        if n <= max_per or max_per < 2:
+            idx = range(n) if n <= max_per else [n - 1]
+        else:
+            idx = sorted({int(k * (n - 1) / (max_per - 1) + 0.5) for k in range(max_per)})
+        keep.update(id(lst[i]) for i in idx)
+    return [r for r in rows if id(r) in keep]
 
 
 def _place_keys(rows: list[dict], r: float, lo: float, hi: float) -> None:
@@ -583,27 +599,30 @@ class MushafData:
                 idx = back(i, 2)
             return " ".join(keyword_form(toks[k]["text"]) for k in idx)
 
-        def sign_label(i: int) -> str | None:
-            found = [c for c in toks[i]["text"] if c in WAQF_LABELS]
-            return WAQF_LABELS[found[-1]] if found else None
+        def sign_char(i: int) -> str:
+            found = [c for c in toks[i]["text"] if c in WAQF_SIGNS_SHOWN]
+            return found[-1] if found else ""
 
         def row(i: int, kind: str, parts: list[tuple[str, str]]) -> dict:
             sec = sections[toks[i]["sec"]]
-            return {"kind": kind, "anchor": i, "anchor_row": toks[i]["_row"],
+            return {"kind": kind, "anchor": i, "anchor_row": toks[i]["_row"], "sec": toks[i]["sec"],
                     "color": sec["color"], "label": sec["label"],
                     "parts": [{"t": t, "v": v} for t, v in parts]}
 
         rows = [row(0, "start", [("w", first_words(0)), ("dots", "…")])]
         for i in range(n):
             if i == n - 1:
-                rows.append(row(i, "end", [("dots", "…"), ("w", last_words(i))]))
+                parts = [("dots", "…"), ("w", last_words(i))]
+                if toks[i]["end"] is not None:
+                    parts.append(("num", str(toks[i]["end"]).translate(AR_DIGITS)))
+                rows.append(row(i, "end", parts))
             elif toks[i]["end"] is not None:
                 rows.append(row(i, "ayah", [("w", last_words(i)),
                                             ("num", str(toks[i]["end"]).translate(AR_DIGITS)),
                                             ("w", first_words(i + 1))]))
             elif toks[i]["sec"] != toks[i + 1]["sec"]:
-                sign = sign_label(i)
-                rows.append(row(i, "mid", [("w", last_words(i, True)),
-                                           ("sign", f"({sign})") if sign else ("sep", "|"),
-                                           ("w", first_words(i + 1, True))]))
-        return rows
+                sign = sign_char(i)
+                left = ("w", last_words(i, True) + sign)       # tanda waqaf menempel pada kata, seperti di mushaf
+                mid = [left] if sign else [left, ("sep", "|")]
+                rows.append(row(i, "mid", mid + [("w", first_words(i + 1, True))]))
+        return _limit_rows(rows, KEYWORD_MAX_PER_BLOCK)

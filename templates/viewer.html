@@ -65,7 +65,7 @@
       {% for k in p.keywords %}
       <div class="kw kw-{{ k.kind }} c-{{ k.color }}" dir="rtl" style="--y: {{ k.top }}; --kh: {{ p.key_row_units }}" title="Blok {{ k.label }}">
         {%- for part in k.parts -%}
-        <span class="kp {{ part.t }}{{ ' ar-num' if part.t == 'num' }}">{{ part.v }}</span>
+        {% if part.t == 'num' %}<span class="an">{{ part.v }}</span>{% else %}<span class="kp {{ part.t }}">{{ part.v }}</span>{% endif %}
         {%- endfor -%}
       </div>
       {% endfor %}

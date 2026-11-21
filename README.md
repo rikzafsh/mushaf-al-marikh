@@ -80,19 +80,19 @@ sesuai bloknya:
 | baris | bentuk |
 |---|---|
 | awal halaman | `kata pertama …` |
-| akhir ayat | `kata terakhir ‹nomor ayat› kata pertama ayat berikutnya` |
-| batas blok di tengah ayat | `kata terakhir (nama tanda waqaf) kata pertama blok berikutnya` |
-| akhir halaman | `… kata terakhir` |
+| akhir ayat | `kata terakhir ⑦ kata pertama ayat berikutnya` (nomor ayat dalam lingkaran penanda ayat) |
+| batas blok di tengah ayat | `kata terakhirۗ kata pertama blok berikutnya` (tanda waqaf ditulis dengan tandanya; bila tidak ada tanda, tampil `|`) |
+| akhir halaman | `… kata terakhir ⑯` (nomor ayat ikut bila halaman berakhir di akhir ayat) |
 
-Aturan jumlah kata (semua dapat diubah di bagian "Kata kunci hafalan" pada `mushaf_data.py`):
+Aturan (dapat diubah di bagian "Kata kunci hafalan" pada `mushaf_data.py`):
+- Kata ditulis **berharakat penuh** seperti di data (`KEYWORD_STRIP_DIACRITICS = True` untuk tanpa harakat).
+- **Maksimal tiga baris per blok** (`KEYWORD_MAX_PER_BLOCK`). Bila pergantian ayat dalam satu blok
+  lebih banyak, diambil yang tersebar merata: pertama, tengah-tengah, dan terakhir (sambungan ke blok berikutnya).
 - Kata awal: satu kata; dua kata bila kata pertama pendek (`KEYWORD_SHORT`, default <= 3 huruf)
-  atau termasuk kata lemah (`KEYWORD_WEAK_WORDS`, mis. `واذا`).
+  atau termasuk kata lemah (`KEYWORD_WEAK_WORDS`, mis. `وَاِذَا`).
 - Kata akhir: satu kata; dua kata bila kata itu pendek, atau bila kata di depannya penafian
-  (`KEYWORD_NEGATORS`: لا لم لن), mis. `لا يشعرون`.
-- Batas blok di tengah ayat: selalu dua kata di kedua sisi. Nama tanda waqaf yang tampil:
-  صلى (ۖ), قلى (ۗ), م (ۘ), لا (ۙ), ج (ۚ), ∴ (ۛ), س (ۜ); bila tidak ada tanda, tampil `|`.
-- Kata tidak melewati batas ayat; kata ditulis tanpa harakat (`KEYWORD_STRIP_DIACRITICS = False`
-  untuk memakai harakat). Nomor ayat memakai angka Arabic-Indic dengan fon angka.
+  (`KEYWORD_NEGATORS`: لا لم لن), mis. `لَا يَشْعُرُوْنَ`.
+- Batas blok di tengah ayat: selalu dua kata di kedua sisi. Kata tidak melewati batas ayat.
 - Baris yang bertumpuk pada satu baris teks disusun berurutan di sekitar baris asalnya.
 
 Tombol "Kata kunci" di toolbar menyembunyikannya (margin kembali sempit). Lebar kolom diatur

@@ -42,7 +42,7 @@
   --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
   /* lebar kolom kata kunci di pinggir luar halaman (0 bila dimatikan) */
-  --kw-col: 18cqw;
+  --kw-col: 22cqw;
 }
 body.no-keys { --kw-col: 0cqw; }
 
@@ -233,7 +233,7 @@ body:not(.no-colors) .run.c-purple { background: var(--purple-bg); }
   top: calc(var(--y) * 100% / 15);
   height: calc(var(--kh) * 100% / 15);
   width: calc(var(--kw-col) - 1.2cqw);
-  display: flex; align-items: center; justify-content: center; gap: .45em;
+  display: flex; align-items: center; justify-content: center; gap: .4em;
   padding: 0 .6em; border-radius: 99px; border: 1px solid var(--edge);
   font-family: var(--ar-font); font-size: 1.85cqw; line-height: 1;
   white-space: nowrap; color: var(--ink);
@@ -247,8 +247,7 @@ body:not(.no-colors) .kw.c-green  { background: var(--green-bg);  border-color: 
 body:not(.no-colors) .kw.c-blue   { background: var(--blue-bg);   border-color: var(--blue-bd); }
 body:not(.no-colors) .kw.c-purple { background: var(--purple-bg); border-color: var(--purple-bd); }
 .kp.dots, .kp.sep { color: var(--muted); }
-.kp.sign { color: var(--gold); font-size: .85em; }
-.kp.num { font-family: var(--num-font); color: var(--gold-dim); font-weight: 700; font-size: .95em; }
+.kw .an { font-size: .85em; margin-inline: .05em; }
 
 /* penanda akhir ayat: angka memakai fon angka, bukan LPMQ */
 .an {

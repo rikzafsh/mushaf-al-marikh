@@ -92,7 +92,7 @@
     page.querySelectorAll(".kw").forEach(k => {
       k.style.fontSize = "";
       let size = parseFloat(getComputedStyle(k).fontSize);
-      const min = size * 0.55;
+      const min = size * 0.5;
       while (k.scrollWidth > k.clientWidth + 1 && size > min) {
         size *= 0.95;
         k.style.fontSize = size + "px";
